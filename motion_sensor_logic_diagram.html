@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP8266 Motion Sensor Logic Flow</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-size: 2.2em;
+        }
+        
+        .diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .flow-section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 10px 0;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            width: 100%;
+            max-width: 1200px;
+        }
+        
+        .section-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #FFD700;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .flow-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .step {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .step:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+        }
+        
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #FFE4B5;
+            font-size: 1.1em;
+        }
+        
+        .step-desc {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .timing {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #FFD700;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .arrow {
+            font-size: 2em;
+            color: #FFD700;
+            text-align: center;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .states-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .state {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .state:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        
+        .failsafe {
+            background: linear-gradient(135deg, #fd746c, #ff9068);
+        }
+        
+        .boost {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+        
+        .connections {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .connection {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            min-width: 150px;
+        }
+        
+        .pin-info {
+            font-weight: bold;
+            color: #FFE4B5;
+            margin-bottom: 5px;
+        }
+        
+        .timing-chart {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .timing-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .timing-item:last-child {
+            border-bottom: none;
+        }
+        
+        .timing-label {
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .timing-value {
+            color: #98FB98;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESP8266 PIR Motion Sensor & Relay Control Logic</h1>
+        
+        <!-- Hardware Connections -->
+        <div class="flow-section">
+            <div class="section-title">🔌 Хардуерни Свързвания</div>
+            <div class="connections">
+                <div class="connection">
+                    <div class="pin-info">PIR Sensor</div>
+                    <div>D5 (GPIO14)</div>
+                </div>
+                <div class="connection">
+                    <div class="pin-info">Light Relay</div>
+                    <div>D6 (GPIO12)</div>
+                </div>
+                <div class="connection">
+                    <div class="pin-info">Fan Relay</div>
+                    <div>D7 (GPIO13)</div>
+                </div>
+                <div class="connection">
+                    <div class="pin-info">Reset Button</div>
+                    <div>D3 (GPIO0)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timing Configuration -->
+        <div class="flow-section">
+            <div class="section-title">⏱️ Времеви Настройки</div>
+            <div class="timing-chart">
+                <div class="timing-item">
+                    <div class="timing-label">Светлина включване:</div>
+                    <div class="timing-value">1.25 сек непрекъснато движение</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Вентилатор включване:</div>
+                    <div class="timing-value">70 сек след светлината</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Светлина изключване:</div>
+                    <div class="timing-value">90 сек без движение</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Вентилатор изключване:</div>
+                    <div class="timing-value">90 сек след светлината</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">Boost продължitelност:</div>
+                    <div class="timing-value">3 минути (по подразбиране)</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-label">MQTT Failsafe:</div>
+                    <div class="timing-value">5 минути без връзка</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Logic Flow -->
+        <div class="flow-section">
+            <div class="section-title">🔄 Основна Логика на Работа</div>
+            <div class="flow-steps">
+                <div class="step">
+                    <div class="step-title">1. Инициализация</div>
+                    <div class="step-desc">WiFi свързване, MQTT настройка, PIR калибриране, OTA активиране</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">2. PIR Мониторинг</div>
+                    <div class="step-desc">Непрекъснат мониторинг на PIR сензора с debounce филтър</div>
+                    <div class="timing">Debounce: 300ms</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">3. Движение Засечено</div>
+                    <div class="step-desc">Стартира броячи за непрекъснато движение</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">4. Светлина Активация</div>
+                    <div class="step-desc">След 1.25 сек непрекъснато движение</div>
+                    <div class="timing">Delay: 1250ms</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">5. Вентилатор Планиране</div>
+                    <div class="step-desc">Планира се включването на вентилатора</div>
+                    <div class="timing">Delay: 70 сек</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">6. Автоматично Изключване</div>
+                    <div class="step-desc">При липса на движение за определен период</div>
+                    <div class="timing">Timeout: 90 сек</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arrow">⬇️</div>
+
+        <!-- System States -->
+        <div class="flow-section">
+            <div class="section-title">🔄 Състояния на Системата</div>
+            <div class="states-grid">
+                <div class="state">
+                    <div>🌙 IDLE</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Очакване за движение</div>
+                </div>
+                <div class="state">
+                    <div>👁️ MOTION DETECTED</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Засечено движение</div>
+                </div>
+                <div class="state">
+                    <div>💡 LIGHT ON</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Светлина включена</div>
+                </div>
+                <div class="state">
+                    <div>🌪️ FAN SCHEDULED</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Вентилатор планиран</div>
+                </div>
+                <div class="state">
+                    <div>🌪️ FAN ON</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Вентилатор работи</div>
+                </div>
+                <div class="state boost">
+                    <div>🚀 BOOST MODE</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Форсиран режим</div>
+                </div>
+                <div class="state failsafe">
+                    <div>⚠️ FAILSAFE</div>
+                    <div style="font-size: 0.8em; margin-top: 5px;">Локална работа</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Special Functions -->
+        <div class="flow-section">
+            <div class="section-title">⚡ Специални Функции</div>
+            <div class="flow-steps">
+                <div class="step boost">
+                    <div class="step-title">🚀 Boost Режим</div>
+                    <div class="step-desc">Ръчно активиране на вентилатора за определен период чрез MQTT команда</div>
+                    <div class="timing">Topic: home/toilet_motion/switch/fan/boost/set<br>Payload: минути (1-10)</div>
+                </div>
+                <div class="step failsafe">
+                    <div class="step-title">⚠️ Failsafe Режим</div>
+                    <div class="step-desc">Локална работа без MQTT при липса на връзка над 5 минути</div>
+                    <div class="timing">Timeout: 5 минути</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">🔧 Safety Check</div>
+                    <div class="step-desc">Периодична проверка на състоянието на релетата и памет</div>
+                    <div class="timing">Interval: 30 секунди</div>
+                </div>
+                <div class="step">
+                    <div class="step-title">🔄 Reset Function</div>
+                    <div class="step-desc">Нулиране на настройките при задържане на бутона 3 секунди</div>
+                    <div class="timing">Hold: 3 секунди</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MQTT Integration -->
+        <div class="flow-section">
+            <div class="section-title">📡 MQTT & Home Assistant</div>
+            <div class="flow-steps">
+                <div class="step">
+                    <div class="step-title">📤 Publishing Topics</div>
+                    <div class="step-desc">
+                        • Motion state<br>
+                        • Light relay state<br>
+                        • Fan relay state<br>
+                        • WiFi RSSI<br>
+                        • Device availability
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-title">📥 Subscription Topics</div>
+                    <div class="step-desc">
+                        • Light control commands<br>
+                        • Fan control commands<br>
+                        • Boost function commands
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-title">🏠 Auto Discovery</div>
+                    <div class="step-desc">
+                        Автоматично откриване в Home Assistant чрез конфигурационни съобщения
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logic Decision Tree -->
+        <div class="flow-section">
+            <div class="section-title">🌳 Дърво на Решенията</div>
+            <div style="font-family: monospace; background: rgba(0,0,0,0.4); padding: 20px; border-radius: 10px; overflow-x: auto;">
+                <div style="color: #FFD700;">🔍 Motion Detected?</div>
+                <div style="margin-left: 20px;">
+                    <div style="color: #98FB98;">├─ YES: Start continuous motion timer</div>
+                    <div style="margin-left: 40px;">
+                        <div style="color: #FFD700;">├─ Motion > 1.25s?</div>
+                        <div style="margin-left: 60px;">
+                            <div style="color: #98FB98;">├─ YES: Turn ON Light → Schedule Fan (70s)</div>
+                            <div style="color: #FFA07A;">└─ NO: Continue monitoring</div>
+                        </div>
+                    </div>
+                    <div style="color: #FFA07A;">└─ NO: Check timeouts</div>
+                    <div style="margin-left: 40px;">
+                        <div style="color: #FFD700;">├─ No motion > 90s & Light ON?</div>
+                        <div style="margin-left: 60px;">
+                            <div style="color: #98FB98;">├─ YES: Turn OFF Light</div>
+                        </div>
+                        <div style="color: #FFD700;">└─ Light OFF > 90s & Fan ON?</div>
+                        <div style="margin-left: 60px;">
+                            <div style="color: #98FB98;">└─ YES: Turn OFF Fan</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="color: #87CEEB; margin-top: 15px;">🚀 Boost Active?</div>
+                <div style="margin-left: 20px;">
+                    <div style="color: #98FB98;">├─ YES: Override normal logic, Force Fan ON</div>
+                    <div style="color: #FFA07A;">└─ NO: Follow normal sequence</div>
+                </div>
+                <div style="color: #F0A500; margin-top: 15px;">⚠️ MQTT Connected?</div>
+                <div style="margin-left: 20px;">
+                    <div style="color: #98FB98;">├─ YES: Normal operation + HA integration</div>
+                    <div style="color: #FFA07A;">└─ NO: Failsafe mode (local operation only)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

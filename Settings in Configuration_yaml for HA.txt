@@ -1,0 +1,39 @@
+
+# Настройки в configuration.yaml за Реле за тоалетната Mov Only(С релета)
+mqtt:
+  sensor:
+    # Реле за тоалетната Mov Only(С релета)
+    # Сенсор за статуса на движението в тоалетната
+    - name: "Toilet Relay Status"
+      unique_id: "toilet_relay_status"
+      state_topic: "home/toilet_relay/status"
+      icon: mdi:application
+      availability_topic: "home/toilet_relay/status"
+      payload_available: "online"
+      payload_not_available: "offline"
+      qos: 0
+      device:
+        name: "Toilet Relay"
+        identifiers:
+          - "toilet_relay"
+        manufacturer: "DIY"
+        model: "Toilet Relay Mov Sensor"
+        sw_version: "2026.00"
+
+    # Реле за тоалетната Mov Only(С релета)
+    # Сензор за RSSI
+    - name: "Toilet Relay RSSI"
+      unique_id: "toilet_relay_rssi"
+      state_topic: "home/toilet_relay/sensor/rssi"
+      availability_topic: "home/toilet_relay/status"
+      payload_available: "online"
+      payload_not_available: "offline"
+      qos: 0
+      device_class: "signal_strength"
+      unit_of_measurement: "dBm"
+      device:
+        identifiers:
+          - "toilet_relay"
+        manufacturer: "DIY"
+        model: "Toilet Relay Mov Sensor"
+        sw_version: "2026.00"
