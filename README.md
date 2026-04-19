@@ -183,15 +183,299 @@ Payload:  <secret_code>
 
 ---
 
+## Home Assistant интеграция
+
+### configuration.yaml
+
+Освен Auto Discovery ентитите (публикувани от firmware-а), добавете ръчно следните сензори в `configuration.yaml`:
+
+```yaml
+mqtt:
+  sensor:
+    # Статус сензор
+    - name: "Toilet Relay Status"
+      unique_id: "toilet_relay_status"
+      state_topic: "home/toilet_relay/status"
+      icon: mdi:application
+      availability_topic: "home/toilet_relay/status"
+      payload_available: "online"
+      payload_not_available: "offline"
+      qos: 0
+      device:
+        name: "Toilet Relay"
+        identifiers:
+          - "toilet_relay"
+        manufacturer: "DIY"
+        model: "Toilet Relay Mov Sensor"
+        sw_version: "2026.00"
+
+    # WiFi RSSI сензор
+    - name: "Toilet Relay RSSI"
+      unique_id: "toilet_relay_rssi"
+      state_topic: "home/toilet_relay/sensor/rssi"
+      availability_topic: "home/toilet_relay/status"
+      payload_available: "online"
+      payload_not_available: "offline"
+      qos: 0
+      device_class: "signal_strength"
+      unit_of_measurement: "dBm"
+      device:
+        identifiers:
+          - "toilet_relay"
+        manufacturer: "DIY"
+        model: "Toilet Relay Mov Sensor"
+        sw_version: "2026.00"
+```
+
+### Dashboard карта (Lovelace)
+
+Изисква инсталирани HACS плъгини: **`custom:button-card`** и **`custom:bignumber-card`**.
+
+Картата включва:
+- Toggle бутони за светлина и вентилатор (с blink анимация при ON)
+- Boost бутон (tap = 3 мин boost, double-tap = спиране на boost)
+- PIR motion сензор (blink при засичане)
+- RSSI индикатор с цветова скала (червено / жълто / зелено)
+- Reset бутон с потвърждение
+- AUTO / MANUAL mode превключвател
+
+```yaml
+views:
+  - title: Toilet Light Control with Relays
+    type: sections
+    max_columns: 4
+    theme: ios-dark-mode-dark-blue
+    header:
+      card:
+        type: markdown
+        text_only: true
+        content: Firmware ver. Relay_Only_Mov_Release_2026.ino ✨
+    sections:
+      - type: grid
+        cards:
+          # --- Light ---
+          - type: custom:button-card
+            entity: switch.toilet_relay_motion_sensor_relay_control_light
+            icon: mdi:lightbulb
+            name: Toilet Light
+            show_name: true
+            show_icon: true
+            color_type: icon
+            color: rgb(101, 240, 55)
+            tap_action:
+              action: toggle
+            hold_action:
+              action: more-info
+            state:
+              - value: 'on'
+                color: rgb(101, 240, 55)
+                icon: mdi:lightbulb-on
+                styles:
+                  icon:
+                    - animation: blink 3s ease infinite
+              - value: 'off'
+                color: rgb(255, 0, 0)
+                icon: mdi:lightbulb-off
+              - value: unavailable
+                icon: mdi:lightbulb-alert
+            grid_options:
+              columns: 6
+              rows: 2.4
+            styles:
+              card:
+                - border-radius: 12px
+                - box-shadow: 0px 2px 4px rgba(0,0,0,0.1)
+              name:
+                - font-weight: bold
+                - font-size: 14px
+
+          # --- Fan ---
+          - type: custom:button-card
+            entity: switch.toilet_relay_motion_sensor_relay_control_fan
+            icon: mdi:fan
+            name: Fan Toilet
+            show_name: true
+            show_icon: true
+            color_type: icon
+            color: rgb(101, 240, 55)
+            hold_action:
+              action: more-info
+            state:
+              - value: 'on'
+                color: rgb(101, 240, 55)
+                icon: mdi:fan
+                styles:
+                  icon:
+                    - animation: blink 3s ease infinite
+              - value: 'off'
+                color: rgb(255, 0, 0)
+                icon: mdi:fan-remove
+              - value: unavailable
+                icon: mdi:fan-alert
+            grid_options:
+              columns: 6
+              rows: 2.4
+            styles:
+              card:
+                - border-radius: 12px
+                - box-shadow: 0px 2px 4px rgba(0,0,0,0.1)
+              name:
+                - font-weight: bold
+                - font-size: 14px
+
+          # --- Boost ---
+          - type: custom:button-card
+            entity: script.boost_fan_for_3_minutes
+            icon: mdi:fan-plus
+            name: Boost Fan for 3 minutes
+            show_name: true
+            show_icon: true
+            color_type: icon
+            color: rgb(4, 0, 255)
+            tap_action:
+              action: call-service
+              service: script.turn_on
+              service_data:
+                entity_id: script.boost_fan_for_3_minutes
+            hold_action:
+              action: more-info
+            double_tap_action:
+              action: call-service
+              service: script.turn_on
+              service_data:
+                entity_id: script.boost_fan_stop
+            state:
+              - value: 'off'
+                color: rgb(4, 0, 255)
+                icon: mdi:fan-plus
+            grid_options:
+              columns: 6
+              rows: 2.4
+
+          # --- Motion sensor ---
+          - type: custom:button-card
+            entity: binary_sensor.toilet_relay_motion_sensor_relay_control_motion
+            icon: mdi:motion-sensor
+            name: Move Sensor Toilet
+            show_name: true
+            show_icon: true
+            color_type: icon
+            color: rgb(101, 240, 55)
+            state:
+              - value: 'off'
+                color: rgb(255, 0, 0)
+                icon: mdi:motion-sensor-off
+              - value: 'on'
+                color: rgb(101, 240, 55)
+                icon: mdi:motion-sensor
+                styles:
+                  icon:
+                    - animation: blink 0.2s ease infinite
+              - value: unavailable
+                icon: mdi:motion-sensor-off
+            grid_options:
+              columns: 6
+              rows: 2
+
+          # --- RSSI ---
+          - type: vertical-stack
+            title: RSSI Controller
+            cards:
+              - type: custom:bignumber-card
+                entity: sensor.toilet_relay_toilet_relay_rssi
+                scale: 30px
+                min: -90
+                max: -35
+                hideunit: false
+                color: '#f0f2f2'
+                bnStyle: '#c29b02'
+                severity:
+                  - value: -80
+                    bnStyle: '#c20202'
+                  - value: -70
+                    bnStyle: '#f0e113'
+                  - value: -35
+                    bnStyle: '#0cc202'
+
+          # --- Reset ---
+          - type: custom:button-card
+            entity: button.toilet_relay_motion_sensor_relay_control_reset
+            icon: mdi:restart
+            name: Reset Toilet Device
+            show_name: true
+            show_icon: true
+            color_type: icon
+            color: rgb(101, 240, 55)
+            confirmation:
+              text: Are you sure? The device will reset...
+            tap_action:
+              action: call-service
+              service: mqtt.publish
+              data:
+                topic: home/toilet_relay/reset/set
+                payload: Plovdiv^@0405
+            hold_action:
+              action: more-info
+            grid_options:
+              columns: 6
+              rows: 2.4
+
+          # --- Mode ---
+          - type: custom:button-card
+            entity: select.toilet_relay_motion_sensor_relay_control_mode
+            icon: mdi:auto-mode
+            name: Toilet Mode
+            show_name: true
+            show_icon: true
+            color_type: icon
+            color: rgb(101, 240, 55)
+            tap_action:
+              action: call-service
+              service: select.select_option
+              service_data:
+                entity_id: select.toilet_relay_motion_sensor_relay_control_mode
+                option: |
+                  [[[ return entity.state === 'AUTO' ? 'MANUAL' : 'AUTO' ]]]
+            hold_action:
+              action: more-info
+            state:
+              - value: MANUAL
+                color: rgb(255, 0, 0)
+                icon: mdi:hand-front-left
+                styles:
+                  icon:
+                    - animation: blink 3s ease infinite
+              - value: AUTO
+                icon: mdi:auto-mode
+                color: rgb(101, 240, 55)
+              - value: unavailable
+                icon: mdi:alert-minus
+            grid_options:
+              columns: 6
+              rows: 2.4
+            styles:
+              card:
+                - border-radius: 12px
+                - box-shadow: 0px 2px 4px rgba(0,0,0,0.1)
+              name:
+                - font-weight: bold
+                - font-size: 14px
+    cards: []
+```
+
+---
+
 ## Структура на проекта
 
 ```
-Relay_Only_Mov_Release_2026.ino   ← основен файл
+Relay_Only_Mov_Release_2026.ino          ← firmware (основен файл)
+Settings_in_Configuration_yaml_for_HA.txt ← MQTT сензори за configuration.yaml
+Toilet_Light_Control_with_Relays_Dashboard_card.txt ← Lovelace dashboard карта
 ```
 
 Конфигурационен файл на устройството (runtime, не в repo):
 ```
-/config.json   (LittleFS)
+/config.json   (LittleFS — съхранява се на ESP8266)
 ```
 
 ---
@@ -207,3 +491,4 @@ Relay_Only_Mov_Release_2026.ino   ← основен файл
 ## Лиценз
 
 DIY проект за лично ползване. Не е предназначен за комерсиална употреба.
+
