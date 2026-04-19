@@ -1,6 +1,5 @@
 /*******************************************************
  * This is the final version from the tests conducted in April 2026 and loaded onto the controller in the box.
- * The file has also been uploaded to PCloud
  * ESP8266 NodeMCU V3 + PIR SR501
  * MQTT (Home Assistant Discovery)
  * WiFiManager + LittleFS (MQTT settings storage)
@@ -254,7 +253,7 @@ void setLightRelay(bool state, bool isManual)
         mqtt.publish(modeTopic, "MANUAL", true);
       }
     } else {
-      // 👉 добавяме ясно разграничение 
+      // 👉 we make a clear distinction 
       Serial.println("The light is On (auto/PIR)");
 
       if (mqtt.connected()) {
@@ -374,7 +373,7 @@ void recordResetAttempt(bool successful) {
 // Authorization check function for reset
 bool isAuthorizedReset(const char* payload) {
   // ✅ Secret protection code
-  static const char secretCode[] = "Plovdiv^@0405";
+  static const char secretCode[] = "xxxxxxxx";
 
   if (strcmp(payload, secretCode) == 0) {
     Serial.println("Authorized reset command");
@@ -952,7 +951,7 @@ void handleRelayControl() {
     }
   }
 
-  // === SMART OFF LOGIC (patched) ===
+  // === SMART OFF LOGIC  ===
   if (lightOn && 
     !manualLightControl &&
     !boostActive &&
