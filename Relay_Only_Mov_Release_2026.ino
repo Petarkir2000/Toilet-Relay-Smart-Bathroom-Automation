@@ -45,10 +45,10 @@ const uint8_t RELAY1_PIN = D6;  // Relay 1 - lightening (GPIO12)
 const uint8_t RELAY2_PIN = D7;  // Relay 2 - fan (GPIO13)
 
 // MQTT settings (by default)
-char mqtt_server[40] = "192.168.1.171";
+char mqtt_server[40] = "192.168.1.xxx";
 char mqtt_port[6] = "1883";
 char mqtt_user[32] = "relay_user";
-char mqtt_pass[32] = "12345678";
+char mqtt_pass[32] = "xxxxxxxx";
 
 // ================= ADDITIONAL SETTINGS =================
 const unsigned long MQTT_FAILSAFE_TIMEOUT_MS = 300000;  // 5 minutes without MQTT connection before Failsafe activation
